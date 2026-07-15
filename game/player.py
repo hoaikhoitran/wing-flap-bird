@@ -27,17 +27,26 @@ _ART_W, _ART_H = 76, 56
 
 
 class Player:
-    """Chim chiu trong luc; moi flap DAT van toc Y = FLAP_FORCE (khong cong don)."""
+    """Chim chiu trong luc; moi flap DAT van toc Y = flap_force (khong cong don).
 
-    def __init__(self, x: float, y: float) -> None:
+    Thong so vat ly lay tu DifficultyConfig (doi duoc trong runtime),
+    khong dung bien global co dinh.
+    """
+
+    def __init__(self, x: float, y: float,
+                 diff: config.DifficultyConfig | None = None) -> None:
         self.x = x
         self.y = y
         self.vel_y = 0.0
         self.angle = 0.0          # Goc nghieng (do; duong = ngua len, theo pygame CCW)
         self.radius = config.PLAYER_RADIUS
+        self.diff = diff or config.EASY
         self._time = 0.0
         self._flap_anim = 0.0     # >0: dang chay animation dap canh
         self.flap_effect_timer = 0.0  # >0: dang hien vong pulse quanh chim
+
+    def set_difficulty(self, diff: config.DifficultyConfig) -> None:
+        self.diff = diff
 
     def reset(self, y: float) -> None:
         """Reset day du khi bat dau / choi lai: vi tri, van toc, goc, hieu ung."""
@@ -53,7 +62,7 @@ class Player:
         DAT van toc = FLAP_FORCE thay vi cong don, de van toc roi hien tai
         khong lam giam hieu qua cua luc bay.
         """
-        self.vel_y = config.FLAP_FORCE
+        self.vel_y = self.diff.flap_force
         self.angle = 28.0            # nghieng len NGAY lap tuc cho phan hoi ro
         self._flap_anim = 0.32       # doi frame animation canh ngay
         self.flap_effect_timer = config.FLAP_PULSE_DURATION
@@ -61,9 +70,9 @@ class Player:
     def update(self, dt: float, gravity_scale: float = 1.0) -> None:
         """Vat ly moi frame. gravity_scale < 1 dung cho grace period sau GO."""
         self._time += dt
-        self.vel_y += config.GRAVITY * gravity_scale * dt
+        self.vel_y += self.diff.gravity * gravity_scale * dt
         # Chi gioi han van toc ROI, khong gioi han van toc bay len
-        self.vel_y = min(self.vel_y, config.MAX_FALL_SPEED)
+        self.vel_y = min(self.vel_y, self.diff.max_fall_speed)
         self.y += self.vel_y * dt
 
         if self._flap_anim > 0.0:

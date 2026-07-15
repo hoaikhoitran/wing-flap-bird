@@ -10,14 +10,20 @@ vai trai/phai, khuyu tay trai/phai, co tay trai/phai.
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional
 
 import cv2
 import numpy as np
+
+from core.paths import get_user_models_dir, resource_path
+
+logger = logging.getLogger(__name__)
 
 try:
     import mediapipe as mp
@@ -42,12 +48,13 @@ _SKELETON_CONNECTIONS = [
 ]
 
 # Model .task cho Tasks API: 0=lite (nhanh), 1=full, 2=heavy
-_MODEL_DIR = os.path.join("assets", "models")
 _MODEL_VARIANTS = {0: "lite", 1: "full", 2: "heavy"}
 _MODEL_URL_TEMPLATE = (
     "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
     "pose_landmarker_{name}/float16/latest/pose_landmarker_{name}.task"
 )
+_MIN_MODEL_BYTES = 1_000_000  # model that luon > 1MB; nho hon = file hong
+_DOWNLOAD_TIMEOUT = 30.0
 
 
 @dataclass(frozen=True)
@@ -93,33 +100,68 @@ def mediapipe_import_error() -> str:
     return _MP_IMPORT_ERROR
 
 
-def model_path_for(complexity: int) -> str:
+def _model_filename(complexity: int) -> str:
     name = _MODEL_VARIANTS.get(complexity, "lite")
-    return os.path.join(_MODEL_DIR, f"pose_landmarker_{name}.task")
+    return f"pose_landmarker_{name}.task"
+
+
+def bundled_model_path(complexity: int) -> Path:
+    """Model dong goi cung game (chi doc, qua resource_path)."""
+    return resource_path(f"assets/models/{_model_filename(complexity)}")
+
+
+def _valid_model(path: Path) -> bool:
+    try:
+        return path.exists() and path.stat().st_size > _MIN_MODEL_BYTES
+    except OSError:
+        return False
 
 
 def ensure_pose_model(complexity: int) -> str:
-    """Tai file model .task neu chua co. Tra ve duong dan model."""
-    path = model_path_for(complexity)
-    # File model hop le luon > 1MB; file nho hon coi nhu tai hong
-    if os.path.exists(path) and os.path.getsize(path) > 1_000_000:
-        return path
+    """Tra ve duong dan model .task hop le.
+
+    Thu tu uu tien:
+      1. Model BUNDLE san trong ban phat hanh (assets/models/, chi doc)
+         -> release khong can Internet trong lan chay dau.
+      2. Model da tai truoc do trong LocalAppData\\WingFlapBird\\models.
+      3. Development fallback: tai ve LocalAppData (KHONG bao gio ghi vao
+         thu muc cai dat), co timeout, luu qua file .part de chong hong.
+    """
+    bundled = bundled_model_path(complexity)
+    if _valid_model(bundled):
+        return str(bundled)
+
+    user_path = get_user_models_dir() / _model_filename(complexity)
+    if _valid_model(user_path):
+        return str(user_path)
+
+    # --- Development fallback: tai model (khong xay ra o release da bundle)
     name = _MODEL_VARIANTS.get(complexity, "lite")
     url = _MODEL_URL_TEMPLATE.format(name=name)
-    os.makedirs(_MODEL_DIR, exist_ok=True)
-    tmp = path + ".part"
+    tmp = str(user_path) + ".part"
     try:
-        print(f"[vision] Dang tai model pose ({name}) tu {url} ...")
-        urllib.request.urlretrieve(url, tmp)
-        os.replace(tmp, path)
-        print(f"[vision] Da luu model vao {path}")
-        return path
+        logger.info("Dang tai model pose (%s) tu %s", name, url)
+        with urllib.request.urlopen(url, timeout=_DOWNLOAD_TIMEOUT) as resp, \
+                open(tmp, "wb") as out:
+            while True:
+                chunk = resp.read(256 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+        os.replace(tmp, user_path)
+        if not _valid_model(user_path):
+            raise RuntimeError("File model tai ve khong hop le (qua nho)")
+        logger.info("Da luu model vao %s", user_path)
+        return str(user_path)
     except Exception as exc:
         if os.path.exists(tmp):
-            os.remove(tmp)
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
         raise RuntimeError(
-            f"Khong tai duoc model pose ({exc}). "
-            f"Hay tai thu cong tu {url} va luu vao {path}"
+            f"Thieu model pose va khong tai duoc ({exc}). "
+            f"Hay tai thu cong tu {url} va luu vao {user_path}"
         ) from exc
 
 

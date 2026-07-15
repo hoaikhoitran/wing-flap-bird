@@ -27,12 +27,13 @@ class CalibPhase(Enum):
     FAILED = "FAILED"
 
 
-_PHASE_MESSAGES = {
-    CalibPhase.DETECT_BODY: "Đang nhận diện cơ thể... Hãy đứng giữa khung hình",
-    CalibPhase.HOLD_LOW: "Giữ hai tay THẤP (dọc theo thân người)",
-    CalibPhase.RAISE_HIGH: "Nâng hai tay LÊN CAO qua vai",
-    CalibPhase.DONE: "Hiệu chỉnh hoàn tất!",
-    CalibPhase.FAILED: "Hiệu chỉnh thất bại - dùng thiết lập mặc định",
+# Key i18n (dich o tang UI, vision khong phu thuoc game.i18n)
+_PHASE_KEYS = {
+    CalibPhase.DETECT_BODY: "calib.detect",
+    CalibPhase.HOLD_LOW: "calib.hold_low",
+    CalibPhase.RAISE_HIGH: "calib.raise_high",
+    CalibPhase.DONE: "calib.done",
+    CalibPhase.FAILED: "calib.failed",
 }
 
 
@@ -57,12 +58,14 @@ class Calibrator:
         self.result: Optional[CalibrationResult] = None
         self._phase_timer = 0.0
         self._total_time = 0.0
+        self._last_metrics: Optional[PoseMetrics] = None
         # Mau thu thap trong tung pha: (wrist_y_avg, shoulder_y_avg, sw)
         self._low_samples: list[tuple[float, float, float]] = []
         self._high_samples: list[tuple[float, float, float]] = []
 
     # ------------------------------------------------------------------
     def update(self, metrics: Optional[PoseMetrics], dt: float) -> None:
+        self._last_metrics = metrics
         if self.phase in (CalibPhase.DONE, CalibPhase.FAILED):
             return
 
@@ -102,8 +105,30 @@ class Calibrator:
 
     # ------------------------------------------------------------------
     @property
-    def message(self) -> str:
-        return _PHASE_MESSAGES[self.phase]
+    def message_key(self) -> str:
+        """Key i18n cua huong dan pha hien tai (UI tu dich)."""
+        return _PHASE_KEYS[self.phase]
+
+    @property
+    def hint_key(self) -> Optional[str]:
+        """Chan doan truc tiep: qua gan / qua xa / thieu anh sang.
+
+        Tra ve key i18n hoac None neu moi thu on.
+        """
+        m = self._last_metrics
+        if m is None:
+            # Chua/khong thay nguoi: chi goi y sau khi da qua pha detect
+            if self.phase in (CalibPhase.HOLD_LOW, CalibPhase.RAISE_HIGH):
+                return "calib.low_visibility"
+            return None
+        cfg = config.FlapDetectorConfig()
+        if m.shoulder_width > cfg.too_close_shoulder_width:
+            return "calib.too_close"
+        if m.shoulder_width < cfg.too_far_shoulder_width:
+            return "calib.too_far"
+        if m.visibility < 0.6:
+            return "calib.low_visibility"
+        return None
 
     @property
     def progress(self) -> float:

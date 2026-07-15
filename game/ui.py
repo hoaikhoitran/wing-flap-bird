@@ -10,6 +10,7 @@ import numpy as np
 import pygame
 
 import config
+from game.i18n import tr
 from vision.vision_system import VisionSnapshot
 
 # ------------------------------------------------------------------
@@ -33,11 +34,11 @@ _STATE_COLORS = {
     "ARMS_UP": (255, 175, 45),
     "FLAP_CONFIRMED": _GREEN,
 }
-_STATE_LABELS = {
-    "NO_POSE": "KHÔNG NHẬN DIỆN ĐƯỢC",
-    "ARMS_DOWN": "TAY THẤP",
-    "ARMS_UP": "TAY CAO",
-    "FLAP_CONFIRMED": "VỖ CÁNH!",
+_STATE_LABEL_KEYS = {
+    "NO_POSE": "hud.no_pose",
+    "ARMS_DOWN": "hud.arms_down",
+    "ARMS_UP": "hud.arms_up",
+    "FLAP_CONFIRMED": "hud.flap",
 }
 
 
@@ -72,7 +73,8 @@ class Background:
         ]
         self._ground_scroll = 0.0
 
-    def update(self, dt: float, scrolling: bool) -> None:
+    def update(self, dt: float, scrolling: bool,
+               scroll_speed: float = 150.0) -> None:
         w = config.WINDOW_WIDTH
         for cloud in self._clouds:
             cloud[0] -= cloud[3] * dt
@@ -81,7 +83,7 @@ class Background:
                 cloud[1] = random.uniform(40, 260)
         if scrolling:
             self._ground_scroll = (self._ground_scroll
-                                   + config.PIPE_SPEED * dt) % 48
+                                   + scroll_speed * dt) % 48
 
     def draw_sky(self, surface: pygame.Surface) -> None:
         surface.blit(self._sky, (0, 0))
@@ -166,13 +168,14 @@ class UI:
                    high_score: int) -> None:
         self._text_outline(surface, str(score), self.font_score,
                            (config.WINDOW_WIDTH // 2, 56))
-        self._text_outline(surface, f"Kỷ lục: {high_score}", self.font_medium,
+        self._text_outline(surface, tr("hud.best", score=high_score),
+                           self.font_medium,
                            (config.WINDOW_WIDTH // 2, 100),
                            color=_YELLOW)
 
     def draw_fps(self, surface: pygame.Surface, game_fps: float,
                  vision_fps: float) -> None:
-        text = f"FPS game: {game_fps:4.0f}   FPS camera: {vision_fps:4.0f}"
+        text = tr("hud.fps", game=game_fps, cam=vision_fps)
         label = self.font_small.render(text, True, _WHITE)
         bg = pygame.Surface((label.get_width() + 12, label.get_height() + 6),
                             pygame.SRCALPHA)
@@ -226,7 +229,7 @@ class UI:
             surface.blit(scaled, rect)
         else:
             pygame.draw.rect(surface, (35, 35, 45), rect)
-            msg = self.font_small.render("KHÔNG CÓ TÍN HIỆU", True,
+            msg = self.font_small.render(tr("hud.no_signal"), True,
                                          (200, 200, 210))
             surface.blit(msg, msg.get_rect(center=rect.center))
 
@@ -235,11 +238,12 @@ class UI:
 
         # Nhan trang thai nhan dien
         if not snap.camera_ok:
-            label_text, label_color = "KHÔNG CÓ WEBCAM", _RED
+            label_text, label_color = tr("hud.no_webcam"), _RED
         elif flashing:
-            label_text, label_color = "VỖ CÁNH!", _GREEN
+            label_text, label_color = tr("hud.flap"), _GREEN
         else:
-            label_text = _STATE_LABELS.get(snap.detector_state, "?")
+            label_text = tr(_STATE_LABEL_KEYS.get(snap.detector_state,
+                                                  "hud.no_pose"))
             label_color = border_color
         label = self.font_medium.render(label_text, True, label_color)
         label_bg = pygame.Surface((label.get_width() + 14,
@@ -259,7 +263,7 @@ class UI:
         pygame.draw.rect(surface, _GREEN if ready_frac >= 1.0 else _YELLOW,
                          fill)
         pygame.draw.rect(surface, _BLACK, bar_rect, 2)
-        tip = "SẴN SÀNG" if ready_frac >= 1.0 else "HỒI..."
+        tip = tr("hud.ready") if ready_frac >= 1.0 else tr("hud.cooling")
         tip_label = self.font_small.render(tip, True, _WHITE)
         surface.blit(tip_label,
                      tip_label.get_rect(midtop=(rect.centerx,
@@ -268,7 +272,7 @@ class UI:
     def draw_camera_warning(self, surface: pygame.Surface,
                             message: str) -> None:
         """Banner canh bao khi webcam khong hoat dong."""
-        text = f"! {message} - Dùng phím SPACE để vỗ cánh"
+        text = "! " + tr("hud.camera_warning", msg=message)
         label = self.font_medium.render(text, True, _WHITE)
         bg = pygame.Surface((label.get_width() + 24,
                              label.get_height() + 12), pygame.SRCALPHA)
@@ -280,34 +284,6 @@ class UI:
     # ------------------------------------------------------------------
     # Cac man hinh
     # ------------------------------------------------------------------
-    def draw_menu(self, surface: pygame.Surface, high_score: int,
-                  vision_ok: bool, calibrated: bool) -> None:
-        cx = config.WINDOW_WIDTH // 2
-        self._text_outline(surface, "WING FLAP", self.font_huge, (cx, 150),
-                           color=_YELLOW)
-        self._text_outline(surface, "Vỗ hai tay như chim để bay lên!",
-                           self.font_big, (cx, 215))
-
-        lines = [
-            ("ENTER  -  Bắt đầu chơi", _WHITE),
-            ("C  -  Hiệu chỉnh lại camera", _WHITE),
-            ("ESC  -  Thoát", _WHITE),
-        ]
-        if vision_ok:
-            lines.insert(0, ("(Hoặc vỗ cánh trước webcam để bắt đầu)",
-                             _GREEN))
-            if not calibrated:
-                lines.append(("Lần đầu chơi sẽ hiệu chỉnh nhanh ~5 giây",
-                              _YELLOW))
-        else:
-            lines.insert(0, ("Webcam chưa sẵn sàng - chơi bằng phím SPACE",
-                             _RED))
-        for i, (text, color) in enumerate(lines):
-            self._text_outline(surface, text, self.font_medium,
-                               (cx, 330 + i * 40), color=color)
-        self._text_outline(surface, f"Kỷ lục: {high_score}",
-                           self.font_big, (cx, 540), color=_YELLOW)
-
     def draw_game_over(self, surface: pygame.Surface, score: int,
                        high_score: int, is_new_record: bool) -> None:
         overlay = pygame.Surface((config.WINDOW_WIDTH, config.WINDOW_HEIGHT),
@@ -316,20 +292,17 @@ class UI:
         surface.blit(overlay, (0, 0))
 
         cx = config.WINDOW_WIDTH // 2
-        self._text_outline(surface, "GAME OVER", self.font_huge, (cx, 200),
-                           color=_RED)
-        self._text_outline(surface, f"Điểm: {score}", self.font_big,
-                           (cx, 285))
+        self._text_outline(surface, tr("over.title"), self.font_huge,
+                           (cx, 200), color=_RED)
+        self._text_outline(surface, tr("over.score", score=score),
+                           self.font_big, (cx, 285))
         if is_new_record:
-            self._text_outline(surface, "★ KỶ LỤC MỚI! ★", self.font_big,
+            self._text_outline(surface, tr("over.new_record"), self.font_big,
                                (cx, 335), color=_YELLOW)
         else:
-            self._text_outline(surface, f"Kỷ lục: {high_score}",
+            self._text_outline(surface, tr("hud.best", score=high_score),
                                self.font_medium, (cx, 335), color=_YELLOW)
-        for i, text in enumerate((
-                "R  -  Chơi lại  (hoặc vỗ cánh)",
-                "C  -  Hiệu chỉnh lại camera",
-                "ESC  -  Thoát")):
+        for i, text in enumerate((tr("over.restart"), tr("over.menu"))):
             self._text_outline(surface, text, self.font_medium,
                                (cx, 420 + i * 40))
 
@@ -337,9 +310,9 @@ class UI:
                        time_left: float, total: float) -> None:
         """Man hinh chuan bi: huong dan + dem nguoc 3-2-1 truoc khi co trong luc."""
         cx = config.WINDOW_WIDTH // 2
-        self._text_outline(surface, "CHUẨN BỊ...", self.font_big, (cx, 150),
-                           color=_YELLOW)
-        self._text_outline(surface, "Vỗ hai tay để bay", self.font_big,
+        self._text_outline(surface, tr("ready.title"), self.font_big,
+                           (cx, 150), color=_YELLOW)
+        self._text_outline(surface, tr("ready.instruction"), self.font_big,
                            (cx, 200))
         # So dem nguoc phong to nhe theo nhip (pulse trong tung giay)
         segment = max(total / 3.0, 1e-6)
@@ -366,11 +339,12 @@ class UI:
 
     def draw_calibration(self, surface: pygame.Surface,
                          snap: VisionSnapshot, message: str,
-                         progress: float, phase_name: str) -> None:
+                         progress: float,
+                         hint: Optional[str] = None) -> None:
         surface.fill((22, 26, 38))
         cx = config.WINDOW_WIDTH // 2
 
-        self._text_outline(surface, "HIỆU CHỈNH CAMERA", self.font_big,
+        self._text_outline(surface, tr("calib.title"), self.font_big,
                            (cx, 44), color=_YELLOW)
 
         # Webcam lon o giua man hinh
@@ -399,9 +373,12 @@ class UI:
         pygame.draw.rect(surface, _GREEN, fill)
         pygame.draw.rect(surface, _WHITE, bar, 2)
 
-        self._text_outline(surface,
-                           "S - bỏ qua (dùng mặc định)     ESC - thoát",
-                           self.font_medium, (cx, bar.bottom + 34),
+        # Chan doan truc tiep: qua gan / qua xa / thieu sang
+        if hint:
+            self._text_outline(surface, hint, self.font_medium,
+                               (cx, bar.bottom + 26), color=(255, 190, 120))
+        self._text_outline(surface, tr("calib.hints"),
+                           self.font_medium, (cx, bar.bottom + 58),
                            color=(190, 195, 210))
 
     # ------------------------------------------------------------------

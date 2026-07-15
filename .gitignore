@@ -6,13 +6,21 @@ env/
 # Python cache
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
 # IDE
 .vscode/
 .idea/
 
-# Environment variables
+# Environment variables / secret - KHONG BAO GIO commit
 .env
+*.pem
+*.key
 
 # Runtime data
 *.log
+
+# Build output (PyInstaller)
+build_tmp/
+dist/
+release/

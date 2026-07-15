@@ -8,6 +8,7 @@ Thiet ke de webcam KHONG BAO GIO lam game loop bi dung:
 """
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from dataclasses import dataclass, field
@@ -22,6 +23,8 @@ from vision.flap_detector import (DetectorState, PoseMetrics,
                                   WingFlapDetector)
 from vision.pose_tracker import (MEDIAPIPE_AVAILABLE, PoseTracker,
                                  mediapipe_import_error)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -43,7 +46,7 @@ class VisionSnapshot:
 class VisionSystem:
     """Quan ly camera + pose + flap detector trong thread rieng."""
 
-    def __init__(self, camera_index: int = config.CAMERA_INDEX) -> None:
+    def __init__(self, camera_index: int = 0) -> None:
         self._camera = Camera(camera_index, config.CAMERA_WIDTH,
                               config.CAMERA_HEIGHT)
         self._detector = WingFlapDetector(config.FlapDetectorConfig())
@@ -85,6 +88,32 @@ class VisionSystem:
         if self._tracker is not None:
             self._tracker.close()
             self._tracker = None
+        logger.info("Vision system stopped")
+
+    @property
+    def running(self) -> bool:
+        return self._thread is not None and self._running
+
+    @property
+    def camera_index(self) -> int:
+        return self._camera.index
+
+    def set_camera_index(self, index: int) -> bool:
+        """Doi camera trong runtime: dung thread cu, mo camera moi.
+
+        Camera cu duoc release day du truoc khi mo camera moi
+        (khong giu nhieu VideoCapture cung luc).
+        """
+        if index == self._camera.index and self.running:
+            return True
+        was_running = self.running
+        self.stop()
+        self._camera = Camera(index, config.CAMERA_WIDTH,
+                              config.CAMERA_HEIGHT)
+        logger.info("Camera index -> %d", index)
+        if was_running:
+            return self.start()
+        return True
 
     # ------------------------------------------------------------------
     # API cho game loop (thread-safe)
@@ -106,6 +135,19 @@ class VisionSystem:
         with self._lock:
             self._detector.apply_thresholds(up_margin_ratio,
                                             down_margin_ratio)
+        logger.info("Calibration ap dung: up=%.3f down=%.3f",
+                    up_margin_ratio, down_margin_ratio)
+
+    def apply_sensitivity(self, sensitivity: float) -> None:
+        """Ap slider sensitivity (0.5..1.5) vao detector, co clamp."""
+        with self._lock:
+            self._detector.config.apply_sensitivity(sensitivity)
+
+    def apply_flap_cooldown(self, seconds: float) -> None:
+        """Cooldown theo do kho (easy 220ms / normal 300ms)."""
+        with self._lock:
+            self._detector.config.flap_cooldown = max(0.15,
+                                                      min(0.45, seconds))
 
     # ------------------------------------------------------------------
     # Thread nen

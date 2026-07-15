@@ -23,8 +23,8 @@ class PipePair:
         self.gap_size = gap_size
         self.scored = False
 
-    def update(self, dt: float) -> None:
-        self.x -= config.PIPE_SPEED * dt
+    def update(self, dt: float, speed: float) -> None:
+        self.x -= speed * dt
 
     @property
     def rects(self) -> tuple[pygame.Rect, pygame.Rect]:
@@ -62,31 +62,40 @@ class PipePair:
 
 
 class ObstacleManager:
-    """Sinh, di chuyen, tinh diem va kiem tra va cham cho cac cap cot."""
+    """Sinh, di chuyen, tinh diem va kiem tra va cham cho cac cap cot.
 
-    def __init__(self, player_x: float) -> None:
+    Thong so (toc do, gap, chu ky sinh) lay tu DifficultyConfig,
+    doi duoc moi luot choi.
+    """
+
+    def __init__(self, player_x: float,
+                 diff: config.DifficultyConfig | None = None) -> None:
         self._player_x = player_x
+        self.diff = diff or config.EASY
         self.pipes: list[PipePair] = []
         self._distance_since_spawn = 0.0
 
+    def set_difficulty(self, diff: config.DifficultyConfig) -> None:
+        self.diff = diff
+
     def reset(self) -> None:
         self.pipes.clear()
-        # Cot dau tien chi xuat hien sau FIRST_OBSTACLE_DELAY giay ke tu GO
+        # Cot dau tien chi xuat hien sau first_obstacle_delay giay ke tu GO
         # (khoi tao am de phai tich luy du quang duong truoc lan sinh dau)
         self._distance_since_spawn = (
-            config.PIPE_SPACING
-            - config.PIPE_SPEED * config.FIRST_OBSTACLE_DELAY)
+            self.diff.pipe_spacing
+            - self.diff.pipe_speed * self.diff.first_obstacle_delay)
 
     def update(self, dt: float) -> int:
         """Cap nhat moi cot. Tra ve so diem moi ghi duoc trong frame nay."""
         scored = 0
-        self._distance_since_spawn += config.PIPE_SPEED * dt
-        if self._distance_since_spawn >= config.PIPE_SPACING:
+        self._distance_since_spawn += self.diff.pipe_speed * dt
+        if self._distance_since_spawn >= self.diff.pipe_spacing:
             self._distance_since_spawn = 0.0
             self._spawn()
 
         for pipe in self.pipes:
-            pipe.update(dt)
+            pipe.update(dt, self.diff.pipe_speed)
             if not pipe.scored and pipe.x + config.PIPE_WIDTH < self._player_x:
                 pipe.scored = True
                 scored += 1
@@ -96,7 +105,7 @@ class ObstacleManager:
 
     def _spawn(self) -> None:
         """Sinh cap cot moi voi khoang trong ngau nhien nhung luon qua duoc."""
-        gap = random.uniform(config.PIPE_GAP_MIN, config.PIPE_GAP_MAX)
+        gap = random.uniform(self.diff.pipe_gap_min, self.diff.pipe_gap_max)
         playfield_bottom = config.WINDOW_HEIGHT - config.GROUND_HEIGHT
         min_center = config.PIPE_GAP_MARGIN + gap / 2
         max_center = playfield_bottom - config.PIPE_GAP_MARGIN - gap / 2

@@ -3,13 +3,13 @@ bang NumPy (khong can asset ban quyen).
 """
 from __future__ import annotations
 
-import os
 from typing import Optional
 
 import numpy as np
 import pygame
 
 import config
+from core.paths import resource_path
 
 _SAMPLE_RATE = 44100
 _ASSET_FILES = {
@@ -57,28 +57,49 @@ def _concat(*sounds: Optional[pygame.mixer.Sound]
 
 
 class SoundBank:
-    """Tap hop hieu ung am thanh; tu vo hieu hoa neu mixer loi."""
+    """Tap hop hieu ung am thanh; tu vo hieu hoa neu mixer loi.
+
+    enabled va volume dieu khien duoc trong runtime tu Settings.
+    """
 
     def __init__(self) -> None:
         self._sounds: dict[str, pygame.mixer.Sound] = {}
         self.enabled = False
+        self._available = False
+        self._volume = 1.0
         if not config.SOUND_ENABLED:
             return
         try:
             if pygame.mixer.get_init() is None:
                 pygame.mixer.init(_SAMPLE_RATE, -16, 2, 512)
             self._load()
+            self._available = True
             self.enabled = True
         except Exception:
             # Khong co thiet bi am thanh -> game van chay binh thuong
+            self._available = False
             self.enabled = False
 
+    def set_enabled(self, enabled: bool) -> None:
+        self.enabled = bool(enabled) and self._available
+
+    def set_volume(self, volume_percent: int) -> None:
+        """Am luong 0..100 ap dung cho moi hieu ung."""
+        self._volume = max(0, min(100, int(volume_percent))) / 100.0
+        for sound in self._sounds.values():
+            try:
+                sound.set_volume(self._volume)
+            except Exception:
+                pass
+
     def _load(self) -> None:
-        # Uu tien file trong assets/ neu nguoi dung tu them
-        for name, path in _ASSET_FILES.items():
-            if os.path.exists(path):
+        # Uu tien file WAV dong goi trong assets/ (resource_path de chay
+        # duoc ca tu source lan tu PyInstaller bundle)
+        for name, rel in _ASSET_FILES.items():
+            path = resource_path(rel)
+            if path.exists():
                 try:
-                    self._sounds[name] = pygame.mixer.Sound(path)
+                    self._sounds[name] = pygame.mixer.Sound(str(path))
                     continue
                 except Exception:
                     pass

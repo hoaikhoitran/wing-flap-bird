@@ -12,6 +12,36 @@ import cv2
 import numpy as np
 
 
+def scan_available_cameras(max_index: int = 5) -> list[int]:
+    """Quet nhanh cac camera index kha dung (0..max_index).
+
+    Mo va release TUNG camera mot (khong giu nhieu VideoCapture cung luc).
+    Ham nay blocking vai giay -> goi tu thread rieng, khong goi trong
+    game loop.
+    """
+    available: list[int] = []
+    for index in range(max_index + 1):
+        cap = None
+        try:
+            if sys.platform == "win32":
+                cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+            else:
+                cap = cv2.VideoCapture(index)
+            if cap.isOpened():
+                ok, frame = cap.read()
+                if ok and frame is not None:
+                    available.append(index)
+        except Exception:
+            pass
+        finally:
+            if cap is not None:
+                try:
+                    cap.release()
+                except Exception:
+                    pass
+    return available
+
+
 class Camera:
     """Doc frame tu webcam, chiu duoc viec webcam bi rut / bi chiem dung."""
 
