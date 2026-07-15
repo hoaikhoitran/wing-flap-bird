@@ -196,6 +196,45 @@ STRINGS: dict[str, dict[str, str]] = {
     "error.open_log": {"vi": "O - Mở thư mục log", "en": "O - Open log folder"},
     "error.restart": {"vi": "R - Khởi động lại game", "en": "R - Restart game"},
     "error.quit": {"vi": "ESC - Thoát", "en": "ESC - Quit"},
+
+    # ---------------- Nhan vat ----------------
+    "menu.characters": {"vi": "NHÂN VẬT", "en": "CHARACTERS"},
+    "select.title": {"vi": "CHỌN NHÂN VẬT", "en": "SELECT CHARACTER"},
+    "select.choose": {"vi": "CHỌN", "en": "SELECT"},
+    "select.selected": {"vi": "ĐANG CHỌN", "en": "SELECTED"},
+    "select.equal_note": {
+        "vi": "Mọi nhân vật đều bay như nhau - chỉ khác vẻ ngoài!",
+        "en": "All characters fly the same - looks only!"},
+    "char.swallow.name": {"vi": "Chim Én", "en": "Swallow"},
+    "char.swallow.desc": {"vi": "Cánh nhọn, đuôi chẻ, tinh thần mùa xuân",
+                          "en": "Pointed wings, split tail, spirit of spring"},
+    "char.duck.name": {"vi": "Vịt Vàng", "en": "Duck"},
+    "char.duck.desc": {"vi": "Tròn trịa, lạc quan, hơi thích ao nước",
+                       "en": "Round, cheerful, slightly pond-obsessed"},
+    "char.stork.name": {"vi": "Cò Trắng", "en": "Stork"},
+    "char.stork.desc": {"vi": "Thanh lịch, mỏ đỏ, bay lượn điềm tĩnh",
+                        "en": "Elegant, red beak, calm glider"},
+    "char.owl.name": {"vi": "Cú Mèo", "en": "Owl"},
+    "char.owl.desc": {"vi": "Mắt to, bay đêm, thông thái nhất bầu trời",
+                      "en": "Big eyes, night flyer, wisest in the sky"},
+    "char.sparrow.name": {"vi": "Chim Sẻ", "en": "Sparrow"},
+    "char.sparrow.desc": {"vi": "Nhỏ gọn, nhanh nhẹn, đầy năng lượng",
+                          "en": "Small, nimble, full of energy"},
+
+    # ---------------- Game over / menu bo sung ----------------
+    "over.restart_btn": {"vi": "CHƠI LẠI", "en": "RESTART"},
+    "over.menu_btn": {"vi": "VỀ MENU", "en": "MAIN MENU"},
+    "over.change_char": {"vi": "ĐỔI NHÂN VẬT", "en": "CHANGE CHARACTER"},
+    "menu.mode_camera": {"vi": "Chế độ: Webcam", "en": "Mode: Webcam"},
+    "menu.mode_keyboard": {"vi": "Chế độ: Bàn phím (SPACE)",
+                           "en": "Mode: Keyboard (SPACE)"},
+    "settings.tab_camera": {"vi": "Camera", "en": "Camera"},
+    "settings.tab_gameplay": {"vi": "Trò chơi", "en": "Gameplay"},
+    "settings.tab_audio": {"vi": "Âm thanh", "en": "Audio"},
+    "settings.tab_display": {"vi": "Hiển thị", "en": "Display"},
+    "settings.tab_data": {"vi": "Dữ liệu", "en": "Data"},
+    "settings.reduce_shake": {"vi": "Giảm rung màn hình",
+                              "en": "Reduce screen shake"},
 }
 
 

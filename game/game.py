@@ -26,13 +26,14 @@ import config
 from core import storage
 from core.settings import GameSettings
 from core.version import PRIVACY_VERSION, window_title
-from game import i18n
+from game import i18n, theme, widgets
+from game.background import Background
 from game.i18n import tr
 from game.obstacle import ObstacleManager
 from game.particles import ParticleSystem
 from game.player import Player
 from game.sound import SoundBank
-from game.ui import UI, Background
+from game.ui import UI
 from vision.calibration import CalibPhase, Calibrator
 from vision.vision_system import VisionSystem
 
@@ -42,6 +43,7 @@ logger = logging.getLogger("wingflap.game")
 class GameState(Enum):
     PRIVACY_NOTICE = "PRIVACY_NOTICE"
     MAIN_MENU = "MAIN_MENU"
+    CHARACTER_SELECT = "CHARACTER_SELECT"
     SETTINGS = "SETTINGS"
     HOW_TO_PLAY = "HOW_TO_PLAY"
     CREDITS = "CREDITS"
@@ -53,10 +55,12 @@ class GameState(Enum):
     GAME_OVER = "GAME_OVER"
 
 
-# Cac state co man hinh menu rieng (widget-based)
-_SCREEN_STATES = (GameState.PRIVACY_NOTICE, GameState.MAIN_MENU,
-                  GameState.SETTINGS, GameState.HOW_TO_PLAY,
-                  GameState.CREDITS, GameState.DONATE, GameState.PAUSED)
+# Man hinh menu ve TOAN BO (khong ve world duoi)
+_MENU_STATES = (GameState.PRIVACY_NOTICE, GameState.MAIN_MENU,
+                GameState.CHARACTER_SELECT, GameState.SETTINGS,
+                GameState.HOW_TO_PLAY, GameState.CREDITS, GameState.DONATE)
+# Man hinh overlay: world dong bang ve duoi, screen ve de len
+_OVERLAY_STATES = (GameState.PAUSED, GameState.GAME_OVER)
 
 
 class Game:
@@ -85,12 +89,15 @@ class Game:
         self.background = Background()
         self.diff = config.get_difficulty_config(self.settings.difficulty)
         self.player = Player(config.PLAYER_X, config.PLAYER_START_Y,
-                             self.diff)
+                             self.diff,
+                             character_id=self.settings.selected_character)
         self.obstacles = ObstacleManager(config.PLAYER_X, self.diff)
         self.particles = ParticleSystem()
         self.sound = SoundBank()
         self.sound.set_enabled(self.settings.sound_enabled)
         self.sound.set_volume(self.settings.volume)
+        # Sound hook cho widget (menu_move / menu_confirm)
+        widgets.set_sound_hook(self.sound.play)
 
         # --- Vision: lazy - KHONG mo camera khi boot ---
         self.use_camera = use_camera
@@ -111,15 +118,20 @@ class Game:
         self._flap_text_age = math.inf
         self._flap_text_pos = (0.0, 0.0)
         self._flap_flash_age = math.inf
-        self._shake_time = 0.0
+        self._trauma = 0.0          # screen shake trauma-based (decay)
+        self._shake_t = 0.0
+        self._score_pop_age = math.inf
         self._game_over_at = 0.0
         self._get_ready_timer = 0.0
         self._grace_timer = 0.0
         self._go_text_age = math.inf
+        self._charselect_return = GameState.MAIN_MENU
 
         # --- Man hinh menu (import tre de tranh vong lap import) ---
+        from game.screens.character_select import CharacterSelectScreen
         from game.screens.credits_screen import CreditsScreen
         from game.screens.donate_screen import DonateScreen
+        from game.screens.game_over_screen import GameOverScreen
         from game.screens.main_menu import MainMenuScreen
         from game.screens.pause_screen import PauseScreen
         from game.screens.privacy_screen import PrivacyScreen
@@ -128,11 +140,13 @@ class Game:
         self.screens = {
             GameState.PRIVACY_NOTICE: PrivacyScreen(self),
             GameState.MAIN_MENU: MainMenuScreen(self),
+            GameState.CHARACTER_SELECT: CharacterSelectScreen(self),
             GameState.SETTINGS: SettingsScreen(self),
             GameState.HOW_TO_PLAY: TutorialScreen(self),
             GameState.CREDITS: CreditsScreen(self),
             GameState.DONATE: DonateScreen(self),
             GameState.PAUSED: PauseScreen(self),
+            GameState.GAME_OVER: GameOverScreen(self),
         }
 
         first_run = (self.settings.privacy_accepted_version
@@ -165,6 +179,14 @@ class Game:
 
     def shutdown(self) -> None:
         self.stop_vision()
+        widgets.set_sound_hook(None)
+        # Cache Surface/Font gan voi display hien tai - PHAI xoa truoc
+        # pygame.quit(), neu khong instance Game tiep theo (test) se blit
+        # surface da giai phong -> access violation
+        from core import font_manager
+        from game.assets import assets as asset_manager
+        asset_manager.clear()
+        font_manager.clear_cache()
         pygame.quit()
         logger.info("Game shut down cleanly")
 
@@ -301,6 +323,25 @@ class Game:
         self.change_state(GameState.MAIN_MENU)
         self.stop_vision()
 
+    # ------------------------------------------------------------------
+    # Chon nhan vat
+    # ------------------------------------------------------------------
+    def open_character_select(self, from_game_over: bool = False) -> None:
+        self._charselect_return = (GameState.GAME_OVER if from_game_over
+                                   else GameState.MAIN_MENU)
+        self.change_state(GameState.CHARACTER_SELECT)
+
+    def close_character_select(self) -> None:
+        self.change_state(self._charselect_return)
+
+    def select_character(self, char_id: str) -> None:
+        """Luu lua chon + ap dung ngay cho luot choi tiep theo."""
+        self.settings.selected_character = char_id
+        self.settings.validate()
+        self.settings.save()
+        self.player.set_character(self.settings.selected_character)
+        logger.info("Character -> %s", self.settings.selected_character)
+
     def request_quit(self) -> None:
         self.running = False
 
@@ -402,11 +443,7 @@ class Game:
             elif key == pygame.K_ESCAPE:
                 self.pause()
 
-        elif self.state is GameState.GAME_OVER:
-            if key in (pygame.K_r, pygame.K_RETURN, pygame.K_SPACE):
-                self._start_game()
-            elif key in (pygame.K_m, pygame.K_ESCAPE):
-                self.back_to_menu()
+        # GAME_OVER: xu ly boi GameOverScreen (button + phim R/M)
 
     # ==================================================================
     # Cap nhat
@@ -414,8 +451,11 @@ class Game:
     def _update(self, dt: float) -> None:
         self._flap_text_age += dt
         self._flap_flash_age += dt
-        if self._shake_time > 0.0:
-            self._shake_time = max(0.0, self._shake_time - dt)
+        self._score_pop_age += dt
+        # Trauma decay + thoi gian noise cho shake
+        if self._trauma > 0.0:
+            self._trauma = max(0.0, self._trauma - 1.6 * dt)
+            self._shake_t += dt
 
         state = self.state
         screen = self.screens.get(state)
@@ -429,11 +469,25 @@ class Game:
                               GameState.CALIBRATING):
             flaps = self.vision.consume_flaps()
 
-        if screen is not None:
+        if state in _MENU_STATES and screen is not None:
             screen.update(dt)
-            if state is GameState.MAIN_MENU:
+            if state in (GameState.MAIN_MENU, GameState.CHARACTER_SELECT):
                 self.background.update(dt, scrolling=False)
+            if state is GameState.MAIN_MENU:
                 self.player.idle_bob(dt)
+            return
+
+        if state is GameState.PAUSED:
+            screen.update(dt)
+            return
+
+        if state is GameState.GAME_OVER:
+            screen.update(dt)
+            self.background.update(dt, scrolling=False)
+            self.player.animator.update(dt)  # hurt frames tiep tuc
+            self.particles.update(dt)
+            if flaps > 0 and time.monotonic() - self._game_over_at > 1.2:
+                self._start_game()
             return
 
         if state is GameState.CALIBRATING:
@@ -457,12 +511,6 @@ class Game:
                 self._do_flap()
             self._update_playing(dt)
 
-        elif state is GameState.GAME_OVER:
-            self.background.update(dt, scrolling=False)
-            self.particles.update(dt)
-            if flaps > 0 and time.monotonic() - self._game_over_at > 1.2:
-                self._start_game()
-
     def _update_playing(self, dt: float) -> None:
         self._go_text_age += dt
         self.background.update(dt, scrolling=True,
@@ -478,6 +526,7 @@ class Game:
         if scored:
             self.score += scored
             self.sound.play("score")
+            self._score_pop_age = 0.0  # score pop (game feel)
             self.particles.emit_score(self.player.x, self.player.y - 30)
 
         ground_y = config.WINDOW_HEIGHT - config.GROUND_HEIGHT
@@ -507,6 +556,7 @@ class Game:
         """Reset DAY DU roi vao GET_READY (dem nguoc, chua co trong luc)."""
         self.diff = config.get_difficulty_config(self.settings.difficulty)
         self.player.set_difficulty(self.diff)
+        self.player.set_character(self.settings.selected_character)
         self.obstacles.set_difficulty(self.diff)
         if self.vision is not None:
             self.vision.apply_flap_cooldown(self.diff.flap_cooldown)
@@ -539,14 +589,16 @@ class Game:
     def _on_death(self) -> None:
         self.sound.play("hit")
         self.sound.play("gameover")
+        self.player.hurt()  # chuyen hurt animation (khong doi physics)
         self.particles.emit_burst(self.player.x, self.player.y)
-        self._shake_time = config.SHAKE_DURATION
+        # Trauma-based shake (skill game-feel): cong don, decay ve 0
+        self._trauma = min(1.0, self._trauma + theme.SHAKE_TRAUMA_HIT)
         self._game_over_at = time.monotonic()
         if self.score > self.high_score:
             self.high_score = self.score
             self.is_new_record = True
             storage.save_high_score(self.high_score)
-        self.state = GameState.GAME_OVER
+        self.change_state(GameState.GAME_OVER)
 
     # ==================================================================
     # Ve
@@ -554,8 +606,8 @@ class Game:
     def _draw(self) -> None:
         state = self.state
 
-        # Man hinh menu ve toan bo (tru PAUSED - ve de len gameplay)
-        if state in _SCREEN_STATES and state is not GameState.PAUSED:
+        # Man hinh menu ve toan bo
+        if state in _MENU_STATES:
             self.screens[state].draw(self.screen)
             if self.settings.show_fps and state is not GameState.PRIVACY_NOTICE:
                 snap_fps = (self.vision.snapshot().vision_fps
@@ -574,12 +626,15 @@ class Game:
                     tr(hint_key) if hint_key else None)
             return
 
-        # --- The gioi game: background -> obstacles -> player -> particles
-        self.background.draw_sky(self.world)
+        # --- The gioi 2.5D: back layers -> gates -> front layers ->
+        #     contact shadow -> player -> particles (z-order chieu sau)
+        ground_top = config.WINDOW_HEIGHT - config.GROUND_HEIGHT
+        self.background.draw_back(self.world)
         if state in (GameState.PLAYING, GameState.GAME_OVER,
                      GameState.PAUSED):
             self.obstacles.draw(self.world)
-        self.background.draw_ground(self.world)
+        self.background.draw_front(self.world)
+        self.player.draw_shadow(self.world, ground_top)
         self.player.draw(self.world)
         self.particles.draw(self.world)
         if self._flap_text_age < config.FLAP_TEXT_DURATION:
@@ -593,15 +648,13 @@ class Game:
             self.ui.draw_get_ready(self.screen, self._countdown_number(),
                                    self._get_ready_timer,
                                    self.diff.start_delay)
-        elif state is GameState.PLAYING:
-            self.ui.draw_score(self.screen, self.score, self.high_score)
-            if self._go_text_age < config.GO_TEXT_DURATION:
+        elif state in (GameState.PLAYING, GameState.PAUSED):
+            pop = max(0.0, 1.0 - self._score_pop_age / 0.25)
+            self.ui.draw_score(self.screen, self.score, self.high_score,
+                               pop=pop)
+            if state is GameState.PLAYING \
+                    and self._go_text_age < config.GO_TEXT_DURATION:
                 self.ui.draw_go(self.screen, self._go_text_age)
-        elif state in (GameState.GAME_OVER, GameState.PAUSED):
-            self.ui.draw_score(self.screen, self.score, self.high_score)
-            if state is GameState.GAME_OVER:
-                self.ui.draw_game_over(self.screen, self.score,
-                                       self.high_score, self.is_new_record)
 
         # --- Webcam panel + canh bao ---
         if snap is not None and self.settings.webcam_preview_enabled:
@@ -622,9 +675,9 @@ class Game:
             self.ui.draw_debug(self.screen, snap or _EMPTY_SNAPSHOT,
                                self._debug_game_lines(snap))
 
-        # Pause menu ve DE LEN gameplay dong bang
-        if state is GameState.PAUSED:
-            self.screens[GameState.PAUSED].draw(self.screen)
+        # Overlay (pause / game over) ve DE LEN gameplay dong bang
+        if state in _OVERLAY_STATES:
+            self.screens[state].draw(self.screen)
 
     def _countdown_number(self) -> str:
         segment = self.diff.start_delay / 3.0
@@ -650,12 +703,15 @@ class Game:
         ]
 
     def _shake_offset(self) -> tuple[int, int]:
-        if self._shake_time <= 0.0:
+        """Screen shake trauma^2 + noise sin muot (khong random moi frame)."""
+        if self._trauma <= 0.001:
             return (0, 0)
-        k = self._shake_time / config.SHAKE_DURATION
-        mag = config.SHAKE_MAGNITUDE * k
-        return (int(random.uniform(-mag, mag)),
-                int(random.uniform(-mag, mag)))
+        shake = self._trauma * self._trauma
+        mag = config.SHAKE_MAGNITUDE
+        if self.settings.reduce_screen_shake:
+            mag *= 0.35
+        return (int(mag * shake * math.sin(self._shake_t * 31.7)),
+                int(mag * shake * math.sin(self._shake_t * 42.3)))
 
 
 # Snapshot rong cho debug overlay khi chua co vision

@@ -12,6 +12,7 @@ mỗi giấy phép có tại trang chủ tương ứng của từng dự án.
 | MediaPipe | Apache License 2.0 | https://github.com/google-ai-edge/mediapipe |
 | MediaPipe Pose Landmarker model (`pose_landmarker_lite.task`) | Apache License 2.0 | https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker |
 | NumPy | BSD 3-Clause | https://numpy.org |
+| Font Be Vietnam Pro (5 weight, bundle trong `assets/fonts/`) | SIL Open Font License 1.1 (toàn văn: `assets/fonts/OFL.txt`) | https://github.com/google/fonts/tree/main/ofl/bevietnampro |
 | platformdirs | MIT | https://github.com/tox-dev/platformdirs |
 | PyInstaller | GPL v2 với Bootloader Exception* | https://pyinstaller.org |
 
@@ -24,11 +25,13 @@ bản phân phối.
 
 - pygame được liên kết động (dynamic linking) theo điều khoản LGPL v2.1;
   người dùng có thể thay thế thư viện pygame theo quyền của LGPL.
-- Toàn bộ **đồ họa** trong game được vẽ bằng Pygame primitives, và toàn bộ
-  **âm thanh** được tổng hợp bằng NumPy — không sử dụng asset của bên thứ ba,
-  không sử dụng bất kỳ asset nào từ Flappy Bird hoặc game thương mại khác.
-- Game hiển thị chữ bằng **font hệ thống** của Windows (Arial/Segoe UI/
-  Tahoma) thông qua `pygame.font.SysFont` — không đóng gói font nào.
+- Toàn bộ **đồ họa** (nhân vật, background, obstacle, UI) được tự sinh
+  bằng `scripts/generate_game_assets.py` (Pillow) và toàn bộ **âm thanh**
+  bằng `scripts/generate_audio_assets.py` (NumPy) — phát hành MIT cùng
+  repository (xem `assets/ASSET_MANIFEST.md`). Không sử dụng asset của
+  bên thứ ba, không dùng asset từ Flappy Bird hoặc game thương mại khác.
+- Chữ hiển thị bằng font **Be Vietnam Pro** bundle sẵn (SIL OFL 1.1,
+  tải từ kho phân phối chính thức google/fonts) — không dùng font hệ thống.
 - "Wing Flap Bird" là trò chơi độc lập lấy cảm hứng từ thể loại game né
   chướng ngại vật; không liên quan tới, và không giả mạo, bất kỳ trò chơi
   thương mại nào.

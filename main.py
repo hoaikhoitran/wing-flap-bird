@@ -27,6 +27,12 @@ def parse_args() -> argparse.Namespace:
                         help="Bat overlay debug va log muc DEBUG")
     parser.add_argument("--smoke", action="store_true",
                         help="Smoke test: chay ~120 frame roi thoat")
+    parser.add_argument("--capture-readme", action="store_true",
+                        help="Sinh screenshot README bang renderer that")
+    parser.add_argument("--output", default="docs/screenshots",
+                        help="Thu muc luu screenshot (capture mode)")
+    parser.add_argument("--capture-baseline", action="store_true",
+                        help="Kem screenshot phu (Support...) cho audit")
     return parser.parse_args()
 
 
@@ -46,8 +52,11 @@ def _show_error_screen(logger: logging.Logger) -> None:
             pygame.init()
         screen = pygame.display.set_mode((700, 360))
         pygame.display.set_caption("Wing Flap Bird - Error")
-        font_big = pygame.font.SysFont("arial", 30, bold=True)
-        font = pygame.font.SysFont("arial", 19)
+        # Font bundle (khong SysFont); neu chinh font loi thi de excepthook
+        # ghi log - man hinh loi khong the hien duoc trong truong hop do
+        from core import font_manager as fm
+        font_big = fm.get("title", 30)
+        font = fm.get("body", 19)
         clock = pygame.time.Clock()
         lines = [
             (tr("error.title"), font_big, (235, 80, 70)),
@@ -134,6 +143,11 @@ def main() -> int:
         pygame.mixer.pre_init(44100, -16, 2, 512)
     except Exception:
         pass
+
+    if args.capture_readme:
+        from tools.capture_readme import run_capture
+        return run_capture(args.output,
+                           include_baseline_extras=args.capture_baseline)
 
     from game.game import Game
 

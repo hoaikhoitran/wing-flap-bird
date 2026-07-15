@@ -4,46 +4,81 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wing Flap Bird — Vỗ cánh để bay!</title>
-<!-- Trang tinh hoan toan: khong analytics, khong tracking, khong cookie,
-     khong payment API, khong goi dich vu ben ngoai. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐦</text></svg>">
+<!-- Trang tinh 100%: khong analytics, khong tracking, khong cookie,
+     khong payment SDK, khong goi dich vu ben ngoai. -->
 <style>
-  :root { color-scheme: light dark; }
+  /* WIND FESTIVAL SKY palette - dong bo voi game/theme.py */
+  :root {
+    --deep-navy: #17324D; --sky-blue: #8FD3FF; --pale-sky: #DDF3FF;
+    --cream: #FFF5DC; --mango: #FFB547; --vermilion: #F35B4B;
+    --leaf: #5BAE68; --teal: #3D8C8E; --ink: #1A2633;
+  }
+  * { box-sizing: border-box; }
   body {
-    font-family: "Segoe UI", Arial, sans-serif;
-    max-width: 760px; margin: 0 auto; padding: 24px 16px 64px;
-    line-height: 1.6; background: #f2f6fb; color: #1c2230;
+    font-family: "Be Vietnam Pro", "Segoe UI", Arial, sans-serif;
+    margin: 0; line-height: 1.65; color: var(--ink);
+    background: linear-gradient(180deg, var(--sky-blue) 0%, var(--pale-sky) 60%, var(--cream) 100%);
   }
-  @media (prefers-color-scheme: dark) {
-    body { background: #12161f; color: #e6e9f0; }
-    .card { background: #1c2230 !important; }
+  header {
+    text-align: center; padding: 48px 16px 24px;
   }
-  h1 { color: #e8a020; margin-bottom: 0; }
-  .tagline { margin-top: 4px; font-size: 1.1em; }
+  header h1 {
+    margin: 0; font-size: clamp(2rem, 6vw, 3.2rem); color: var(--mango);
+    text-shadow: -2px 2px 0 var(--ink), 2px 2px 0 var(--ink),
+                 2px -2px 0 var(--ink), -2px -2px 0 var(--ink);
+    letter-spacing: 1px;
+  }
+  header p { font-size: 1.15em; font-weight: 600; margin: 10px 0 0; }
+  main { max-width: 900px; margin: 0 auto; padding: 8px 16px 64px; }
   .card {
-    background: #ffffff; border-radius: 14px; padding: 20px 24px;
-    margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    background: #fff; border: 3px solid var(--ink); border-radius: 18px;
+    padding: 22px 26px; margin: 22px 0;
+    box-shadow: 0 6px 0 rgba(15,35,55,.28);
   }
+  .card h2 { margin-top: 0; color: var(--deep-navy); }
+  .hero img, .gallery img {
+    width: 100%; height: auto; border-radius: 12px;
+    border: 3px solid var(--ink); display: block;
+  }
+  .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .gallery { grid-template-columns: 1fr; } }
   .btn {
-    display: inline-block; background: #e8a020; color: #1c2230;
-    font-weight: 700; padding: 12px 22px; border-radius: 10px;
-    text-decoration: none;
+    display: inline-block; background: var(--mango); color: var(--ink);
+    font-weight: 800; padding: 14px 26px; border-radius: 12px;
+    border: 3px solid var(--ink); text-decoration: none;
+    box-shadow: 0 4px 0 var(--ink); transition: transform .12s ease-out;
   }
+  .btn:hover { transform: translateY(-2px) scale(1.02); }
+  .btn:focus-visible { outline: 4px solid var(--vermilion); }
   .qr-wrap { text-align: center; }
   .qr-wrap img {
-    /* Nen trang + giu nguyen ty le; khong filter/transform */
-    background: #ffffff; border-radius: 10px; padding: 10px;
+    background: #fff; border-radius: 12px; padding: 10px;
     width: 100%; max-width: 340px; height: auto;
+    border: 3px solid var(--ink);
   }
-  footer { font-size: .85em; opacity: .7; margin-top: 40px; }
-  code { background: rgba(128,128,128,.15); padding: 2px 6px; border-radius: 5px; }
+  .chars { display: flex; flex-wrap: wrap; gap: 8px 18px; padding-left: 0;
+           list-style: none; font-weight: 600; }
+  .chars li::before { content: "🪁 "; }
+  footer { text-align: center; font-size: .9em; padding: 22px;
+           background: var(--deep-navy); color: var(--pale-sky); }
+  footer a { color: var(--mango); }
+  code { background: rgba(23,50,77,.1); padding: 2px 7px; border-radius: 6px; }
 </style>
 </head>
 <body>
 
-<h1>🐦 Wing Flap Bird</h1>
-<p class="tagline"><strong>Vỗ hai tay như chim trước webcam để bay!</strong>
-Game né chướng ngại vật điều khiển bằng chuyển động cơ thể, chạy hoàn toàn
-offline trên Windows.</p>
+<header>
+  <h1>🐦 WING FLAP BIRD</h1>
+  <p>Vỗ hai tay như chim trước webcam để bay — game vận động 2.5D, chạy offline trên Windows.</p>
+</header>
+
+<main>
+
+<div class="card hero">
+  <img src="screenshots/gameplay.png" width="1000" height="700"
+       alt="Gameplay Wing Flap Bird: chim én bay qua cổng tre giữa bầu trời lễ hội diều nhiều lớp">
+</div>
 
 <div class="card">
   <h2>⬇️ Tải game (Windows 10/11 x64)</h2>
@@ -52,9 +87,22 @@ offline trên Windows.</p>
     <li>Tải <code>WingFlapBird-v0.1.0-beta-Windows-x64.zip</code></li>
     <li>Giải nén và mở <code>WingFlapBird.exe</code></li>
   </ol>
-  <p>Không cần cài Python, không cần Internet, không cần terminal.
-  Không có webcam vẫn chơi được bằng phím <code>SPACE</code>.</p>
+  <p>Không cần cài Python, không cần Internet. Không có webcam vẫn chơi được bằng phím <code>SPACE</code>.</p>
   <p><a class="btn" href="https://github.com/hoaikhoitran/wing-flap-bird/releases">Tải bản mới nhất</a></p>
+</div>
+
+<div class="card">
+  <h2>🐤 Năm nhân vật — miễn phí từ đầu</h2>
+  <ul class="chars">
+    <li>Chim Én</li><li>Vịt Vàng</li><li>Cò Trắng</li><li>Cú Mèo</li><li>Chim Sẻ</li>
+  </ul>
+  <p>Mọi nhân vật bay như nhau — chỉ khác vẻ ngoài. Không khóa, không trả phí.</p>
+  <div class="gallery">
+    <img src="screenshots/character-select.png" width="1000" height="700"
+         alt="Màn hình chọn nhân vật với 5 thẻ nhân vật">
+    <img src="screenshots/main-menu.png" width="1000" height="700"
+         alt="Menu chính Wing Flap Bird">
+  </div>
 </div>
 
 <div class="card">
@@ -63,33 +111,34 @@ offline trên Windows.</p>
     <li>Đứng cách webcam 1.5–2.5 m, camera thấy được vai và hai tay.</li>
     <li>Hiệu chỉnh nhanh ~5 giây theo hướng dẫn trong game.</li>
     <li><strong>Nâng hai tay qua vai rồi hạ xuống dứt khoát</strong> = một lần vỗ cánh.</li>
-    <li>Né các cột để ghi điểm!</li>
+    <li>Né các cổng tre để ghi điểm!</li>
   </ol>
 </div>
 
 <div class="card">
   <h2>🔒 Quyền riêng tư</h2>
   <p>Hình ảnh webcam được xử lý <strong>100% cục bộ</strong> trên máy bạn.
-  Game không ghi hình, không lưu video, không gửi bất kỳ dữ liệu nào lên
-  Internet, không telemetry. Trang web này cũng không dùng cookie hay
-  tracking. Chi tiết:
-  <a href="https://github.com/hoaikhoitran/wing-flap-bird/blob/main/PRIVACY.md">PRIVACY.md</a></p>
+  Game không ghi hình, không lưu video, không gửi dữ liệu lên Internet,
+  không telemetry. Trang này cũng không dùng cookie hay tracking.
+  Chi tiết: <a href="https://github.com/hoaikhoitran/wing-flap-bird/blob/main/PRIVACY.md">PRIVACY.md</a></p>
 </div>
 
 <div class="card qr-wrap">
   <h2>💛 Ủng hộ nhà phát triển</h2>
   <p>Wing Flap Bird miễn phí. Nếu bạn thích trò chơi, bạn có thể ủng hộ để
-  hỗ trợ các bản cập nhật tiếp theo. Việc ủng hộ hoàn toàn tự nguyện và
-  không mở khóa lợi thế trong game.</p>
+  hỗ trợ các bản cập nhật tiếp theo. Hoàn toàn tự nguyện và không mở khóa
+  lợi thế trong game.</p>
   <img src="assets/vietqr-support.png" width="890" height="1207"
        alt="Mã VietQR ủng hộ nhà phát triển qua ngân hàng MB — quét bằng ứng dụng ngân hàng">
   <p>Quét mã bằng ứng dụng ngân hàng của bạn.</p>
 </div>
 
+</main>
+
 <footer>
   <p>© 2026 hoaikhoitran —
-  <a href="https://github.com/hoaikhoitran/wing-flap-bird">Mã nguồn (MIT License)</a>
-  · Powered by Python, Pygame, OpenCV, MediaPipe</p>
+  <a href="https://github.com/hoaikhoitran/wing-flap-bird">Mã nguồn (MIT License)</a><br>
+  Powered by Python, Pygame, OpenCV, MediaPipe · Font Be Vietnam Pro (SIL OFL 1.1)</p>
 </footer>
 
 </body>

@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 VALID_DIFFICULTIES = ("easy", "normal")
 VALID_LANGUAGES = ("vi", "en")
+# Dong bo voi game/characters.py (khai bao o day de core khong import game/)
+VALID_CHARACTERS = ("swallow", "duck", "stork", "owl", "sparrow")
 SENSITIVITY_MIN, SENSITIVITY_MAX = 0.5, 1.5
 CAMERA_INDEX_MAX = 10
 
@@ -39,6 +41,8 @@ class GameSettings:
     debug_enabled: bool = False          # PHAI mac dinh False trong release
     sensitivity: float = 1.0             # 0.5..1.5
     privacy_accepted_version: int = 0    # < PRIVACY_VERSION -> hien notice
+    selected_character: str = "swallow"  # 1 trong VALID_CHARACTERS
+    reduce_screen_shake: bool = False    # giam rung khi va cham
 
     # ------------------------------------------------------------------
     @classmethod
@@ -114,10 +118,11 @@ class GameSettings:
         _int("camera_index", 0, CAMERA_INDEX_MAX)  # khong nhan index am
         _choice("difficulty", VALID_DIFFICULTIES)
         _choice("language", VALID_LANGUAGES)
+        _choice("selected_character", VALID_CHARACTERS)  # sai -> swallow
         _float("sensitivity", SENSITIVITY_MIN, SENSITIVITY_MAX)
         _int("volume", 0, 100)
         _int("privacy_accepted_version", 0, 999)
         for flag in ("sound_enabled", "music_enabled",
                      "webcam_preview_enabled", "fullscreen", "show_fps",
-                     "debug_enabled"):
+                     "debug_enabled", "reduce_screen_shake"):
             _bool(flag)

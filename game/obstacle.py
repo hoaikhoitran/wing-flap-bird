@@ -1,17 +1,23 @@
-"""Chuong ngai vat: cac cap cot di chuyen tu phai sang trai."""
+"""Chuong ngai vat: Bamboo Wind Gate di chuyen tu phai sang trai.
+
+Visual la cot tre + thanh ngang + co lua + soft shadow, nhung
+COLLISION RECT giu NGUYEN nhu truoc (rects property khong doi) ->
+gameplay khong thay doi, khong va cham oan.
+"""
 from __future__ import annotations
 
+import math
 import random
 
 import pygame
 
 import config
+from game.assets import assets
 
-_PIPE_BODY = (86, 180, 78)
-_PIPE_LIGHT = (128, 210, 110)
-_PIPE_DARK = (46, 120, 46)
-_RIM_EXTRA = 7      # Vanh cot rong hon than bao nhieu px moi ben
-_RIM_HEIGHT = 30
+_A = "assets/art/obstacles"
+_COL_H = 620          # chieu cao texture cot tre
+_CAP_W, _CAP_H = 108, 34
+_H_STEP = 8           # luong tu hoa chieu cao crop de cache hieu qua
 
 
 class PipePair:
@@ -42,23 +48,50 @@ class PipePair:
         return self.x + config.PIPE_WIDTH < -10
 
     def draw(self, surface: pygame.Surface) -> None:
+        """Ve Bamboo Wind Gate. Visual bam sat collision rect."""
         top, bottom = self.rects
-        for rect, rim_at_bottom in ((top, True), (bottom, False)):
+        t = pygame.time.get_ticks() / 1000.0
+        # Co lua bay nhe theo thoi gian (chi offset, khong allocate)
+        flutter = math.sin(t * 5.0 + self.x * 0.02) * 2.0
+        ribbon = ("ribbon_red" if int(self.gap_center_y) % 2 == 0
+                  else "ribbon_yellow")
+
+        for rect, is_top in ((top, True), (bottom, False)):
             if rect.height <= 0:
                 continue
-            pygame.draw.rect(surface, _PIPE_BODY, rect)
-            # Soc sang ben trai cho co chieu sau
-            pygame.draw.rect(surface, _PIPE_LIGHT,
-                             (rect.x + 6, rect.y, 14, rect.height))
-            pygame.draw.rect(surface, _PIPE_DARK, rect, 3)
-            # Vanh cot o mep khoang trong
-            rim_y = (rect.bottom - _RIM_HEIGHT) if rim_at_bottom else rect.y
-            rim = pygame.Rect(rect.x - _RIM_EXTRA, rim_y,
-                              rect.width + 2 * _RIM_EXTRA, _RIM_HEIGHT)
-            pygame.draw.rect(surface, _PIPE_BODY, rim)
-            pygame.draw.rect(surface, _PIPE_LIGHT,
-                             (rim.x + 4, rim.y, 12, rim.height))
-            pygame.draw.rect(surface, _PIPE_DARK, rim, 3)
+            # Chieu cao crop luong tu hoa (phan thua tran ra ngoai man
+            # hinh phia tren / bi mat dat che phia duoi)
+            q = min(_COL_H,
+                    ((rect.height + _H_STEP - 1) // _H_STEP) * _H_STEP)
+            tex = f"{_A}/bamboo_gate_top.png" if is_top \
+                else f"{_A}/bamboo_gate_bottom.png"
+            if is_top:
+                column = assets.cropped(tex, (0, _COL_H - q,
+                                              config.PIPE_WIDTH, q))
+                col_y = rect.bottom - q
+            else:
+                column = assets.cropped(tex, (0, 0, config.PIPE_WIDTH, q))
+                col_y = rect.top
+
+            # Soft shadow do sang phai (truoc cot, sau background)
+            shadow = assets.cropped(f"{_A}/gate_shadow.png",
+                                    (0, 0, 46, q))
+            surface.blit(shadow, (rect.right - 6, col_y))
+            surface.blit(column, (rect.x, col_y))
+
+            # Thanh ngang o mep khoang trong + co lua
+            cap = assets.image(f"{_A}/gate_cap.png")
+            cap_x = rect.centerx - _CAP_W // 2
+            if is_top:
+                surface.blit(cap, (cap_x, rect.bottom - _CAP_H + 4))
+                surface.blit(assets.image(f"{_A}/{ribbon}.png"),
+                             (rect.right - 10,
+                              rect.bottom + 2 + flutter))
+            else:
+                surface.blit(cap, (cap_x, rect.top - 4))
+                surface.blit(assets.image(f"{_A}/{ribbon}.png"),
+                             (rect.right - 10,
+                              rect.top - 32 - flutter))
 
 
 class ObstacleManager:

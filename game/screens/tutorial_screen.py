@@ -25,6 +25,8 @@ class TutorialScreen(WidgetScreen):
         self.testing = False
         self._time = 0.0
         self._flash_age = 999.0
+        from game.characters import load_animator
+        self._preview = load_animator(game.settings.selected_character)
         self._build()
 
     def _build(self) -> None:
@@ -44,6 +46,8 @@ class TutorialScreen(WidgetScreen):
 
     def on_enter(self) -> None:
         self.testing = False
+        from game.characters import load_animator
+        self._preview = load_animator(self.game.settings.selected_character)
         self._build()
 
     def on_leave(self) -> None:
@@ -80,6 +84,11 @@ class TutorialScreen(WidgetScreen):
         super().update(dt)
         self._time += dt
         self._flash_age += dt
+        # Nhan vat dang chon bay minh hoa: flap dong bo voi chu ky tay
+        phase = (self._time % 2.0) / 2.0
+        if 0.48 < phase < 0.56:
+            self._preview.play("flap", restart=True)
+        self._preview.update(dt)
         if self.testing and self.game.vision is not None:
             # Flap trong che do test: chi nhay hieu ung + dem, khong vao game
             if self.game.vision.consume_flaps() > 0:
@@ -114,6 +123,13 @@ class TutorialScreen(WidgetScreen):
             self._draw_test_panel(surface, right, ui)
         else:
             self._draw_stick_figure(surface, right, ui)
+            # Nhan vat dang chon bay theo nhip vo tay (len khi flap)
+            phase = (self._time % 2.0) / 2.0
+            lift = math.sin(phase * math.pi)
+            frame = self._preview.frame
+            fly_y = right.y + 96 - lift * 46
+            surface.blit(frame, frame.get_rect(
+                center=(right.x - 52, int(fly_y))))
 
         self.draw_widgets(surface, ui.font_medium)
 

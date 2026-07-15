@@ -1,10 +1,9 @@
-"""Man hinh Settings: camera, do kho, do nhay, am thanh, hien thi, du lieu.
+"""Settings chia TAB: Camera / Tro choi / Am thanh / Hien thi / Du lieu.
 
-Nguyen tac:
-  - Moi thay doi tu luu ngay vao settings.json (LocalAppData).
-  - Quet camera chay trong THREAD RIENG, khong treo game.
-  - Chi mo 1 VideoCapture tai mot thoi diem (scan mo/release tuan tu).
-  - Thao tac xoa du lieu co hop thoai xac nhan.
+- Khong nhoi moi setting vao 1 man hinh; moi tab dung widget rieng.
+- Camera preview giu DUNG aspect 4:3 (khong keo meo webcam frame).
+- Moi thay doi tu luu; thao tac xoa du lieu co hop thoai xac nhan.
+- Quet camera trong thread rieng, khong treo game.
 """
 from __future__ import annotations
 
@@ -14,12 +13,12 @@ from typing import TYPE_CHECKING, Optional
 import pygame
 
 import config
+from core import font_manager as fm
 from core import storage
-from game import i18n
+from game import i18n, theme
 from game.i18n import tr
-from game.widgets import (COL_PANEL, COL_RED, COL_TEXT_DIM, Button,
-                          ConfirmDialog, Selector, Slider, Toggle,
-                          WidgetScreen)
+from game.widgets import (Button, ConfirmDialog, Selector, Slider, TabBar,
+                          Toggle, WidgetScreen)
 
 if TYPE_CHECKING:
     from game.game import Game
@@ -35,10 +34,16 @@ def _sensitivity_text(value: float) -> str:
     return f"{name} ({value:.2f})"
 
 
+_TAB_KEYS = ("settings.tab_camera", "settings.tab_gameplay",
+             "settings.tab_audio", "settings.tab_display",
+             "settings.tab_data")
+
+
 class SettingsScreen(WidgetScreen):
     def __init__(self, game: "Game") -> None:
         super().__init__()
         self.game = game
+        self.tab = 0
         self.testing = False
         self._scanning = False
         self._scan_result: Optional[list[int]] = None
@@ -47,14 +52,35 @@ class SettingsScreen(WidgetScreen):
         self._build()
 
     # ------------------------------------------------------------------
-    # Dung giao dien
-    # ------------------------------------------------------------------
     def _build(self) -> None:
         self.widgets.clear()
-        s = self.game.settings
+        self._tabbar = TabBar(pygame.Rect(60, 84, 880, 44),
+                              [tr(k) for k in _TAB_KEYS], self.tab,
+                              self._on_tab)
+        self.widgets.append(self._tabbar)
 
-        # ----- Cot trai: camera -----
-        lx, lw = 60, 420
+        builder = (self._build_camera, self._build_gameplay,
+                   self._build_audio, self._build_display,
+                   self._build_data)[self.tab]
+        builder()
+
+        self.widgets.append(Button(
+            pygame.Rect(810, 630, 130, 46), tr("settings.back"),
+            self._back, primary=True))
+
+    def _on_tab(self, index: int) -> None:
+        if self.testing:
+            self.testing = False
+            self.game.stop_vision_if_idle()
+        self.tab = index
+        self._build()
+
+    # ------------------------------------------------------------------
+    # Tab builders
+    # ------------------------------------------------------------------
+    def _build_camera(self) -> None:
+        s = self.game.settings
+        lx, lw = 520, 420
         options = [tr("settings.camera_item", index=i)
                    for i in self._cam_indices]
         if self._scanning:
@@ -65,96 +91,95 @@ class SettingsScreen(WidgetScreen):
             selected = self._cam_indices.index(s.camera_index)
         except ValueError:
             selected = 0
-        self._cam_selector = Selector(
-            pygame.Rect(lx, 100, lw, 40), tr("settings.camera"),
-            options, selected, self._on_camera_change)
-        self.widgets.append(self._cam_selector)
+        self.widgets.append(Selector(
+            pygame.Rect(lx, 170, lw, 42), tr("settings.camera"),
+            options, selected, self._on_camera_change))
 
         self._test_btn = Button(
-            pygame.Rect(lx, 152, 200, 40),
+            pygame.Rect(lx, 232, 200, 44),
             tr("settings.camera_stop_test") if self.testing
-            else tr("settings.camera_test"),
-            self._toggle_test)
+            else tr("settings.camera_test"), self._toggle_test)
         self.widgets.append(self._test_btn)
         self._refresh_btn = Button(
-            pygame.Rect(lx + 220, 152, 200, 40),
+            pygame.Rect(lx + 220, 232, 200, 44),
             tr("settings.camera_refresh"), self._start_scan)
         self._refresh_btn.enabled = not self._scanning
         self.widgets.append(self._refresh_btn)
 
-        # ----- Cot phai: gameplay / am thanh / hien thi -----
-        rx, rw, row = 540, 400, 52
-        y = 100
+    def _build_gameplay(self) -> None:
+        s = self.game.settings
+        rx, rw, row = 300, 400, 62
+        y = 180
         diff_options = [tr("settings.diff_easy"), tr("settings.diff_normal")]
-        diff_index = 0 if s.difficulty == "easy" else 1
         self.widgets.append(Selector(
-            pygame.Rect(rx, y, rw, 40), tr("settings.difficulty"),
-            diff_options, diff_index, self._on_difficulty)); y += row
+            pygame.Rect(rx, y, rw, 42), tr("settings.difficulty"),
+            diff_options, 0 if s.difficulty == "easy" else 1,
+            self._on_difficulty)); y += row
         self.widgets.append(Slider(
-            pygame.Rect(rx, y, rw, 40), tr("settings.sensitivity"),
+            pygame.Rect(rx, y, rw, 42), tr("settings.sensitivity"),
             0.5, 1.5, s.sensitivity, 0.05, self._on_sensitivity,
             fmt=_sensitivity_text)); y += row
-        lang_index = 0 if s.language == "vi" else 1
-        self.widgets.append(Selector(
-            pygame.Rect(rx, y, rw, 40), tr("settings.language"),
-            ["Tiếng Việt", "English"], lang_index,
-            self._on_language)); y += row
         self.widgets.append(Toggle(
-            pygame.Rect(rx, y, rw, 40), tr("settings.sound"),
+            pygame.Rect(rx, y, rw, 42), tr("settings.reduce_shake"),
+            s.reduce_screen_shake, self._on_reduce_shake,
+            tr("settings.on"), tr("settings.off")))
+
+    def _build_audio(self) -> None:
+        s = self.game.settings
+        rx, rw, row = 300, 400, 62
+        y = 180
+        self.widgets.append(Toggle(
+            pygame.Rect(rx, y, rw, 42), tr("settings.sound"),
             s.sound_enabled, self._on_sound,
             tr("settings.on"), tr("settings.off"))); y += row
         self.widgets.append(Slider(
-            pygame.Rect(rx, y, rw, 40), tr("settings.volume"),
+            pygame.Rect(rx, y, rw, 42), tr("settings.volume"),
             0, 100, s.volume, 5, self._on_volume,
             fmt=lambda v: f"{int(v)}")); y += row
         self.widgets.append(Toggle(
-            pygame.Rect(rx, y, rw, 40), tr("settings.music"),
+            pygame.Rect(rx, y, rw, 42), tr("settings.music"),
             s.music_enabled, self._on_music,
-            tr("settings.on"), tr("settings.off"))); y += row
+            tr("settings.on"), tr("settings.off")))
+
+    def _build_display(self) -> None:
+        s = self.game.settings
+        rx, rw, row = 300, 400, 62
+        y = 168
         self.widgets.append(Toggle(
-            pygame.Rect(rx, y, rw, 40), tr("settings.fullscreen"),
+            pygame.Rect(rx, y, rw, 42), tr("settings.fullscreen"),
             s.fullscreen, self._on_fullscreen,
             tr("settings.on"), tr("settings.off"))); y += row
         self.widgets.append(Toggle(
-            pygame.Rect(rx, y, rw, 40), tr("settings.webcam_preview"),
+            pygame.Rect(rx, y, rw, 42), tr("settings.webcam_preview"),
             s.webcam_preview_enabled, self._on_preview,
             tr("settings.on"), tr("settings.off"))); y += row
         self.widgets.append(Toggle(
-            pygame.Rect(rx, y, rw, 40), tr("settings.show_fps"),
+            pygame.Rect(rx, y, rw, 42), tr("settings.show_fps"),
             s.show_fps, self._on_fps,
             tr("settings.on"), tr("settings.off"))); y += row
+        self.widgets.append(Selector(
+            pygame.Rect(rx, y, rw, 42), tr("settings.language"),
+            ["Tiếng Việt", "English"], 0 if s.language == "vi" else 1,
+            self._on_language)); y += row
         self.widgets.append(Toggle(
-            pygame.Rect(rx, y, rw, 40), tr("settings.debug"),
+            pygame.Rect(rx, y, rw, 42), tr("settings.debug"),
             s.debug_enabled, self._on_debug,
-            tr("settings.on"), tr("settings.off"))); y += row
+            tr("settings.on"), tr("settings.off")))
 
-        # ----- Hang duoi: du lieu + quay lai -----
-        by = 632
-        self.widgets.append(Button(
-            pygame.Rect(60, by, 235, 44), tr("settings.reset_high_score"),
-            lambda: self._confirm(self._do_reset_high_score)))
-        self.widgets.append(Button(
-            pygame.Rect(310, by, 235, 44), tr("settings.reset_calibration"),
-            lambda: self._confirm(self._do_reset_calibration)))
-        self.widgets.append(Button(
-            pygame.Rect(560, by, 235, 44), tr("settings.reset_all"),
-            lambda: self._confirm(self._do_reset_all)))
-        self.widgets.append(Button(
-            pygame.Rect(830, by, 130, 44), tr("settings.back"), self._back))
-
-    def on_enter(self) -> None:
-        self.testing = False
-        self._build()
-        if self._scan_result is None and not self._scanning:
-            self._start_scan()
-
-    def on_leave(self) -> None:
-        if self.testing:
-            self.testing = False
-            self.game.stop_vision_if_idle()
+    def _build_data(self) -> None:
+        cx = config.WINDOW_WIDTH // 2
+        y = 200
+        for key, action in (
+                ("settings.reset_high_score", self._do_reset_high_score),
+                ("settings.reset_calibration", self._do_reset_calibration),
+                ("settings.reset_all", self._do_reset_all)):
+            self.widgets.append(Button(
+                pygame.Rect(cx - 190, y, 380, 50), tr(key),
+                (lambda a=action: self._confirm(a))))
+            y += 66
 
     # ------------------------------------------------------------------
-    # Camera
+    # Camera logic (thread scan, khong treo UI)
     # ------------------------------------------------------------------
     def _start_scan(self) -> None:
         if self._scanning:
@@ -164,8 +189,8 @@ class SettingsScreen(WidgetScreen):
 
         def worker() -> None:
             from vision.camera import scan_available_cameras
-            result = scan_available_cameras(config.CAMERA_SCAN_MAX_INDEX)
-            self._scan_result = result
+            self._scan_result = scan_available_cameras(
+                config.CAMERA_SCAN_MAX_INDEX)
             self._scanning = False
 
         threading.Thread(target=worker, name="camera-scan",
@@ -173,9 +198,8 @@ class SettingsScreen(WidgetScreen):
 
     def update(self, dt: float) -> None:
         super().update(dt)
-        # Scan xong -> cap nhat danh sach camera (chay tren main thread)
         if self._scan_result is not None and not self._scanning \
-                and self._refresh_btn.enabled is False:
+                and self.tab == 0 and not self._refresh_btn.enabled:
             found = self._scan_result or []
             current = self.game.settings.camera_index
             self._cam_indices = found if found else [current]
@@ -209,7 +233,7 @@ class SettingsScreen(WidgetScreen):
                                 else tr("settings.camera_test"))
 
     # ------------------------------------------------------------------
-    # Cac setting khac (tu luu ngay)
+    # Callbacks (tu luu ngay)
     # ------------------------------------------------------------------
     def _on_difficulty(self, index: int) -> None:
         self.game.settings.difficulty = "easy" if index == 0 else "normal"
@@ -220,6 +244,10 @@ class SettingsScreen(WidgetScreen):
         self.game.settings.save()
         if self.game.vision is not None:
             self.game.vision.apply_sensitivity(value)
+
+    def _on_reduce_shake(self, value: bool) -> None:
+        self.game.settings.reduce_screen_shake = value
+        self.game.settings.save()
 
     def _on_language(self, index: int) -> None:
         self.game.settings.language = "vi" if index == 0 else "en"
@@ -261,8 +289,6 @@ class SettingsScreen(WidgetScreen):
         config.DEBUG_MODE = value
 
     # ------------------------------------------------------------------
-    # Du lieu (co xac nhan)
-    # ------------------------------------------------------------------
     def _confirm(self, action) -> None:
         self.dialog = ConfirmDialog(tr("settings.confirm"),
                                     tr("settings.yes"), tr("settings.no"),
@@ -283,6 +309,17 @@ class SettingsScreen(WidgetScreen):
     def _back(self) -> None:
         self.game.close_settings()
 
+    def on_enter(self) -> None:
+        self.testing = False
+        self._build()
+        if self._scan_result is None and not self._scanning:
+            self._start_scan()
+
+    def on_leave(self) -> None:
+        if self.testing:
+            self.testing = False
+            self.game.stop_vision_if_idle()
+
     def handle_event(self, event: pygame.event.Event) -> bool:
         if super().handle_event(event):
             return True
@@ -293,44 +330,51 @@ class SettingsScreen(WidgetScreen):
 
     # ------------------------------------------------------------------
     def draw(self, surface: pygame.Surface) -> None:
-        surface.fill((18, 22, 34))
+        surface.fill(theme.BG_MENU)
         ui = self.game.ui
-        ui._text_outline(surface, tr("settings.title"), ui.font_big,
+        ui._text_outline(surface, tr("settings.title"), "title",
                          (config.WINDOW_WIDTH // 2, 44),
-                         color=(255, 220, 80))
+                         color=theme.MANGO)
 
-        # Khung preview camera (cot trai duoi)
-        preview = pygame.Rect(60, 216, 420, 300)
-        pygame.draw.rect(surface, COL_PANEL, preview, border_radius=10)
+        if self.tab == 0:
+            self._draw_camera_tab(surface, ui)
+
+        self.draw_widgets(surface, ui.font_button)
+
+    def _draw_camera_tab(self, surface: pygame.Surface, ui) -> None:
+        # Preview 4:3 DUNG aspect (frame camera 640x480)
+        preview = pygame.Rect(60, 170, 400, 300)
+        pygame.draw.rect(surface, theme.PANEL_DARK, preview,
+                         border_radius=theme.RADIUS_M)
         if self.testing and self.game.vision is not None:
             snap = self.game.vision.snapshot()
             frame = ui.frame_to_surface(snap.frame_rgb)
-            inner = preview.inflate(-12, -12)
+            inner = preview.inflate(-8, -6)
+            # 392x294 ~ 4:3 - khop ti le frame, khong meo
             if frame is not None:
                 surface.blit(pygame.transform.scale(frame, inner.size),
                              inner)
             else:
-                msg = ui.font_small.render(tr("settings.camera_busy"),
-                                           True, COL_RED)
+                msg = fm.render("caption", tr("settings.camera_busy"),
+                                theme.VERMILION)
                 surface.blit(msg, msg.get_rect(center=inner.center))
         else:
-            hint = ui.font_small.render(tr("settings.camera_test"), True,
-                                        COL_TEXT_DIM)
+            hint = fm.render("caption", tr("settings.camera_test"),
+                             theme.TEXT_DIM_ON_DARK)
             surface.blit(hint, hint.get_rect(center=preview.center))
+        pygame.draw.rect(surface, theme.PANEL_DARK_BORDER, preview, 2,
+                         border_radius=theme.RADIUS_M)
 
-        # Trang thai quet / goi y calibration lai
-        status_y = 542
+        status_y = 500
         if self._scanning:
-            status = ui.font_small.render(tr("settings.camera_scanning"),
-                                          True, COL_TEXT_DIM)
+            status = fm.render("caption", tr("settings.camera_scanning"),
+                               theme.TEXT_DIM_ON_DARK)
             surface.blit(status, (60, status_y))
         elif self._scan_result is not None and not self._scan_result:
-            status = ui.font_small.render(tr("settings.camera_none"),
-                                          True, COL_RED)
+            status = fm.render("caption", tr("settings.camera_none"),
+                               theme.VERMILION)
             surface.blit(status, (60, status_y))
         if self._show_recalib_hint:
-            hint = ui.font_small.render(tr("settings.recalib_hint"), True,
-                                        (255, 190, 120))
-            surface.blit(hint, (60, status_y + 24))
-
-        self.draw_widgets(surface, ui.font_medium)
+            hint = fm.render("caption", tr("settings.recalib_hint"),
+                             theme.MANGO)
+            surface.blit(hint, (60, status_y + 26))

@@ -1,25 +1,27 @@
 # 🐦 Wing Flap Bird
 
-**Vỗ hai tay như chim trước webcam để bay!** Game né chướng ngại vật điều
-khiển bằng chuyển động cơ thể, chạy hoàn toàn offline trên Windows.
+<p align="center">
+  <img
+    src="docs/screenshots/gameplay.png"
+    alt="Wing Flap Bird gameplay controlled by arm movements"
+    width="900"
+  >
+</p>
 
-> Lấy cảm hứng từ thể loại game né chướng ngại vật. Đây là trò chơi độc lập,
-> không liên quan tới bất kỳ game thương mại nào.
+**Vỗ hai tay như chim trước webcam để bay!** Game né chướng ngại vật 2.5D
+điều khiển bằng chuyển động cơ thể (MediaPipe Pose), art direction
+*Wind Festival Sky*, chạy hoàn toàn offline trên Windows.
 
-## Preview
+> Trò chơi độc lập lấy cảm hứng từ thể loại né chướng ngại vật — toàn bộ
+> đồ họa và âm thanh tự tạo, không dùng asset của game thương mại nào.
 
-```text
-┌─────────────────────────────────────────────┐
-│   12                          ┌──────────┐  │
-│            ██                 │ webcam + │  │
-│    🐦      ██                 │ skeleton │  │
-│            ██     ██          └──────────┘  │
-│    ██             ██           TAY CAO      │
-│    ██             ██          [████████░]   │
-└─────────────────────────────────────────────┘
-```
+*All screenshots were captured from the running Pygame build.*
 
-*(TODO: thay bằng screenshot/GIF thật trước khi công bố)*
+## 🐤 Năm nhân vật — miễn phí từ đầu
+
+**Chim Én · Vịt Vàng · Cò Trắng · Cú Mèo · Chim Sẻ** — mọi nhân vật dùng
+cùng hitbox và vật lý (chỉ khác vẻ ngoài và animation). Không khóa,
+không trả phí, không lợi thế gameplay.
 
 ## Download
 
@@ -30,26 +32,50 @@ khiển bằng chuyển động cơ thể, chạy hoàn toàn offline trên Wind
 
 Không cần cài Python, không cần Internet, không cần terminal.
 
-> ⚠️ **Windows SmartScreen**: vì bản beta chưa có chứng chỉ ký mã, Windows có
-> thể hiển thị cảnh báo SmartScreen. Chọn *More info → Run anyway*. Chỉ tải
-> game từ trang GitHub Releases chính thức của repository này.
+> ⚠️ **Windows SmartScreen**: bản beta chưa có chứng chỉ ký mã nên Windows
+> có thể cảnh báo. Chọn *More info → Run anyway*. Chỉ tải game từ trang
+> GitHub Releases chính thức của repository này.
 
 ## How to play
 
 1. Đứng cách webcam **1.5–2.5 m**, camera thấy được vai, khuỷu tay, cổ tay.
-2. Lần đầu chơi, game hiệu chỉnh nhanh ~5 giây (đứng giữa khung hình →
-   giữ tay thấp → giơ tay cao). Kết quả được lưu cho những lần sau.
+2. Lần đầu chơi, game hiệu chỉnh nhanh ~5 giây (kết quả được lưu lại).
 3. **Nâng hai tay qua vai rồi hạ xuống dứt khoát** = một lần vỗ cánh
-   (bay lên ~100 px). Mỗi chu kỳ chỉ tính một lần vỗ.
-4. Né các cột để ghi điểm. Menu **CÁCH CHƠI** trong game có minh họa
+   (~100 px). Mỗi chu kỳ chỉ tính một lần vỗ.
+4. Né các **cổng tre** để ghi điểm. Menu **CÁCH CHƠI** có minh họa động
    và chế độ test cử chỉ trực tiếp.
 
-## Privacy
+## Webcam privacy
 
-Hình ảnh webcam được **xử lý cục bộ 100%** trên máy bạn. Game không ghi
-hình, không lưu video, không gửi bất kỳ dữ liệu nào lên Internet, không
-telemetry. Bạn có thể chơi không cần camera (phím SPACE) và tắt khung
-webcam preview trong Cài đặt. Chi tiết: **[PRIVACY.md](PRIVACY.md)**.
+Hình ảnh webcam được **xử lý cục bộ 100%** (model MediaPipe đóng gói sẵn).
+Game không ghi hình, không lưu video, không gửi dữ liệu lên Internet,
+không telemetry. Chơi không cần camera bằng phím `SPACE`; khung webcam
+preview tắt được trong Cài đặt. Chi tiết: **[PRIVACY.md](PRIVACY.md)**.
+
+## Controls
+
+| Phím / Động tác | Chức năng |
+|---|---|
+| **Vỗ hai tay** | Bay lên (điều khiển chính) |
+| `SPACE` | Bay (dự phòng khi không có webcam) |
+| `ESC` | Tạm dừng / quay lại |
+| `R` / `M` | Chơi lại / Về menu (màn game over) |
+| Chuột / `↑↓←→` `Enter` | Điều hướng menu |
+| `F1` | Debug overlay |
+
+## Screenshots
+
+| Main menu | Character selection |
+|---|---|
+| ![Main menu](docs/screenshots/main-menu.png) | ![Character selection](docs/screenshots/character-select.png) |
+
+| Settings | How to play |
+|---|---|
+| ![Settings](docs/screenshots/settings.png) | ![How to play](docs/screenshots/how-to-play.png) |
+
+| Game over |
+|---|
+| ![Game over](docs/screenshots/game-over.png) |
 
 ## System requirements
 
@@ -58,33 +84,17 @@ webcam preview trong Cài đặt. Chi tiết: **[PRIVACY.md](PRIVACY.md)**.
 - CPU 4 nhân trở lên khuyến nghị (MediaPipe chạy bằng CPU)
 - ~700 MB dung lượng trống
 
-## Controls
+## Support
 
-| Phím / Động tác | Chức năng |
-|---|---|
-| **Vỗ hai tay** | Bay lên (điều khiển chính) |
-| `SPACE` | Bay (dự phòng khi không có webcam / debug) |
-| `ESC` | Tạm dừng / quay lại |
-| `R` | Chơi lại (màn game over) |
-| `M` | Về menu chính (màn game over) |
-| `F1` | Bật/tắt debug overlay |
-| Chuột / `↑↓` `Enter` | Điều hướng menu |
-
-## Troubleshooting
-
-| Vấn đề | Cách xử lý |
-|---|---|
-| Không mở được webcam | Kiểm tra app khác đang chiếm camera (Zoom, Teams); vào **Cài đặt → Camera → Quét lại** và chọn camera khác; game vẫn chơi được bằng SPACE |
-| "KHÔNG NHẬN DIỆN ĐƯỢC" liên tục | Thiếu sáng, đứng quá gần/xa; làm theo gợi ý trên màn hiệu chỉnh |
-| Vỗ không ăn | Hạ tay dứt khoát hơn; chạy lại hiệu chỉnh (CÁCH CHƠI → Chạy hiệu chỉnh); tăng **Độ nhạy** trong Cài đặt |
-| Nhận nhầm khi tay rung nhẹ | Giảm **Độ nhạy** trong Cài đặt |
-| Game chậm | Đóng app nặng khác; MediaPipe cần CPU; tắt webcam preview |
-| Game crash | Xem log tại `%LOCALAPPDATA%\WingFlapBird\logs\wing_flap_bird.log` và tạo issue kèm file này |
+Wing Flap Bird miễn phí. Nếu thích game, bạn có thể ủng hộ qua menu
+**ỦNG HỘ NHÀ PHÁT TRIỂN** trong game (quét VietQR) — hoàn toàn tự nguyện,
+không mở khóa lợi thế. Trang giới thiệu:
+[hoaikhoitran.github.io/wing-flap-bird](https://hoaikhoitran.github.io/wing-flap-bird/)
+*(bật GitHub Pages từ thư mục `/docs`)*.
 
 ## Build from source (developer)
 
-Yêu cầu **Python 3.11 x64** (phiên bản MediaPipe hỗ trợ ổn định đã test;
-chưa hỗ trợ Python 3.13).
+Yêu cầu **Python 3.11 x64** (MediaPipe chưa hỗ trợ 3.13).
 
 ```bash
 git clone https://github.com/hoaikhoitran/wing-flap-bird.git
@@ -93,40 +103,32 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements-dev.txt
 python main.py            # chạy game
-pytest                    # chạy test
+pytest                    # 91 test
 ```
 
-Tham số hữu ích: `--camera 1`, `--no-camera`, `--debug`, `--smoke`.
+Tham số: `--camera N`, `--no-camera`, `--debug`, `--smoke`,
+`--capture-readme --output docs/screenshots` (chụp screenshot bằng chính
+renderer của game).
+
+Sinh lại asset (deterministic):
+
+```bash
+python scripts/generate_game_assets.py --seed 20260715
+python scripts/generate_audio_assets.py
+```
 
 Build bản Windows:
 
 ```bash
 scripts\build_windows.bat
-# hoặc thủ công:
-pyinstaller build\wing_flap_bird.spec --clean --noconfirm --workpath build_tmp --distpath dist
 ```
 
 Kết quả: `dist/WingFlapBird/WingFlapBird.exe` và
 `release/WingFlapBird-v0.1.0-beta-Windows-x64.zip`.
 
-## Support development
-
-Wing Flap Bird miễn phí. Nếu thích game, bạn có thể ủng hộ qua nút
-**ỦNG HỘ NHÀ PHÁT TRIỂN** trong menu (khi developer đã cấu hình
-`DONATE_URL` trong `core/links.py`). Việc ủng hộ hoàn toàn tự nguyện và
-không mở khóa lợi thế trong game.
-
-## Contributing
-
-Issue và pull request đều được hoan nghênh. Trước khi gửi PR:
-
-```bash
-pytest        # toàn bộ test phải pass
-```
-
-Checklist test thủ công: [docs/TESTING_CHECKLIST.md](docs/TESTING_CHECKLIST.md).
-
 ## License
 
-[MIT](LICENSE) © 2026 hoaikhoitran — xem thêm
+[MIT](LICENSE) © 2026 hoaikhoitran — asset art/audio tự sinh phát hành MIT
+cùng repo (xem [assets/ASSET_MANIFEST.md](assets/ASSET_MANIFEST.md)).
+Font **Be Vietnam Pro** (SIL OFL 1.1) và các thành phần khác:
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
